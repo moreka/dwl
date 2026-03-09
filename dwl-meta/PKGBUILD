@@ -1,0 +1,38 @@
+# Maintainer: Mohammad Reza Karimi <m.r.karimi.j@gmail.com>
+
+pkgname=dwl-meta
+pkgver=1
+pkgrel=1
+pkgdesc='Dependencies for dwl build'
+url='https://github.com/moreka/dwl'
+arch=('x86_64')
+license=('MIT')
+depends=(
+    glibc
+    libdrm
+    libinput
+    libliftoff
+    libxcb
+    libglvnd
+    lcms2
+    libxkbcommon
+    systemd-libs
+    opengl-driver
+    pixman
+    wayland
+    xcb-util-errors
+    xcb-util-renderutil
+    xcb-util-wm
+    seatd
+    glslang
+    vulkan-icd-loader
+    libdisplay-info
+    git
+    meson
+    vulkan-headers
+    wayland-protocols
+    xorgproto
+    xorg-xwayland
+)
+
+# vim:set sw=2 sts=-1 et:
