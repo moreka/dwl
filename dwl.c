@@ -198,6 +198,8 @@ struct Monitor {
 	struct wlr_box w; /* window area, layout-relative */
 	struct wl_list layers[4]; /* LayerSurface.link */
 	const Layout *lt[2];
+	int gappi; /* gap between windows */
+	int gappo; /* outer gaps */
 	unsigned int seltags;
 	unsigned int sellt;
 	uint32_t tagset[2];
@@ -272,6 +274,7 @@ static void createpopup(struct wl_listener *listener, void *data);
 static void cursorconstrain(struct wlr_pointer_constraint_v1 *constraint);
 static void cursorframe(struct wl_listener *listener, void *data);
 static void cursorwarptohint(void);
+static void defaultgaps(const Arg *arg);
 static void destroydecoration(struct wl_listener *listener, void *data);
 static void destroydragicon(struct wl_listener *listener, void *data);
 static void destroyidleinhibitor(struct wl_listener *listener, void *data);
@@ -324,6 +327,7 @@ static void setcursor(struct wl_listener *listener, void *data);
 static void setcursorshape(struct wl_listener *listener, void *data);
 static void setfloating(Client *c, int floating);
 static void setfullscreen(Client *c, int fullscreen);
+static void setgaps(int outer, int inner);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
 static void setmon(Client *c, Monitor *m, uint32_t newtags);
@@ -337,6 +341,7 @@ static void tagmon(const Arg *arg);
 static void tile(Monitor *m);
 static void togglefloating(const Arg *arg);
 static void togglefullscreen(const Arg *arg);
+static void togglegaps(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void unlocksession(struct wl_listener *listener, void *data);
@@ -406,6 +411,7 @@ static struct wlr_output_layout *output_layout;
 static struct wlr_box sgeom;
 static struct wl_list mons;
 static Monitor *selmon;
+static int enablegaps = 1; /* enables gaps, used by togglegaps */
 
 /* global event handlers */
 static struct wl_listener cursor_axis = {.notify = axisnotify};
@@ -1056,6 +1062,9 @@ createmon(struct wl_listener *listener, void *data)
 	for (i = 0; i < LENGTH(m->layers); i++)
 		wl_list_init(&m->layers[i]);
 
+	m->gappi = gappi;
+	m->gappo = gappo;
+
 	wlr_output_state_init(&state);
 	/* Initialize monitor state using configured rules */
 	m->tagset[0] = m->tagset[1] = 1;
@@ -1236,6 +1245,12 @@ cursorwarptohint(void)
 		wlr_cursor_warp(cursor, NULL, sx + c->geom.x + c->bw, sy + c->geom.y + c->bw);
 		wlr_seat_pointer_warp(active_constraint->seat, sx, sy);
 	}
+}
+
+void
+defaultgaps(const Arg *arg)
+{
+	setgaps(gappo, gappi);
 }
 
 void
@@ -1830,8 +1845,13 @@ monocle(Monitor *m)
 	wl_list_for_each(c, &clients, link) {
 		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
 			continue;
-		resize(c, m->w, 0);
+		//
 		n++;
+		if (!monoclegaps)
+			resize(c, m->w, 0);
+		else
+			resize(c, (struct wlr_box){.x = m->w.x + gappo, .y = m->w.y + gappo,
+				.width=m->w.width - 2*gappo, .height=m->w.height - 2 * gappo}, 0);
 	}
 	if (n)
 		snprintf(m->ltsymbol, LENGTH(m->ltsymbol), "[%d]", n);
@@ -2370,6 +2390,14 @@ setfullscreen(Client *c, int fullscreen)
 }
 
 void
+setgaps(int outer, int inner)
+{
+	selmon->gappi = MAX(inner, 0);
+	selmon->gappo = MAX(outer, 0);
+	arrange(selmon);
+}
+
+void
 setlayout(const Arg *arg)
 {
 	if (!selmon)
@@ -2715,6 +2743,7 @@ void
 tile(Monitor *m)
 {
 	unsigned int mw, my, ty;
+	unsigned int h, r, oe = enablegaps, ie = enablegaps;
 	int i, n = 0;
 	Client *c;
 
@@ -2724,22 +2753,38 @@ tile(Monitor *m)
 	if (n == 0)
 		return;
 
+	if (smartgaps == n) {
+		oe = 0; // disable outer gaps
+	}
+
 	if (n > m->nmaster)
-		mw = m->nmaster ? (int)roundf(m->w.width * m->mfact) : 0;
+		mw = m->nmaster ? (int)roundf((m->w.width + m->gappi*ie) * m->mfact) : 0;
 	else
-		mw = m->w.width;
-	i = my = ty = 0;
+		mw = m->w.width - 2*m->gappo*oe + m->gappi*ie;
+	i = 0;
+	my = ty = m->gappo*oe;
 	wl_list_for_each(c, &clients, link) {
 		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
 			continue;
 		if (i < m->nmaster) {
-			resize(c, (struct wlr_box){.x = m->w.x, .y = m->w.y + my, .width = mw,
-				.height = (m->w.height - my) / (MIN(n, m->nmaster) - i)}, 0);
-			my += c->geom.height;
+			// resize(c, (struct wlr_box){.x = m->w.x, .y = m->w.y + my, .width = mw,
+			// 	.height = (m->w.height - my) / (MIN(n, m->nmaster) - i)}, 0);
+			// my += c->geom.height;
+			r = MIN(n, m->nmaster) - i;
+			h = (m->w.height - my - m->gappo*oe - m->gappi*ie * (r
+           - 1)) / r;
+			resize(c, (struct wlr_box){.x = m->w.x + m->gappo*oe, .y = m->w.y + my,
+				.width = mw - m->gappi*ie, .height = h}, 0);
+			my += c->geom.height + m->gappi*ie;
 		} else {
-			resize(c, (struct wlr_box){.x = m->w.x + mw, .y = m->w.y + ty,
-				.width = m->w.width - mw, .height = (m->w.height - ty) / (n - i)}, 0);
-			ty += c->geom.height;
+			// resize(c, (struct wlr_box){.x = m->w.x + mw, .y = m->w.y + ty,
+			// 	.width = m->w.width - mw, .height = (m->w.height - ty) / (n - i)}, 0);
+			// ty += c->geom.height;
+			r = n - i;
+			h = (m->w.height - ty - m->gappo*oe - m->gappi*ie * (r - 1)) / r;
+			resize(c, (struct wlr_box){.x = m->w.x + mw + m->gappo*oe, .y = m->w.y + ty,
+				.width = m->w.width - mw - 2*m->gappo*oe, .height = h}, 0);
+			ty += c->geom.height + m->gappi*ie;
 		}
 		i++;
 	}
@@ -2760,6 +2805,13 @@ togglefullscreen(const Arg *arg)
 	Client *sel = focustop(selmon);
 	if (sel)
 		setfullscreen(sel, !sel->isfullscreen);
+}
+
+void
+togglegaps(const Arg *arg)
+{
+	enablegaps = !enablegaps;
+	arrange(selmon);
 }
 
 void

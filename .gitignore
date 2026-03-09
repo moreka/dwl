@@ -5,3 +5,6 @@ dwl
 .ccls-cache
 config.h
 dwl-meta/dwl-meta-*
+.cache
+compile_commands.json
+patches
