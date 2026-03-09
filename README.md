@@ -29,8 +29,11 @@ make
 
 ### wlroots dependencies
 
-I have made a PKGBUILD (a meta package) to install all dependencies.
-Head over to ./dwl-meta` and do `makepkg -si`.
+I have made a PKGBUILD (a meta package) to install all dependencies:
+```sh
+cd dwl-meta
+makepkg -si
+```
 
 ## Installing
 
