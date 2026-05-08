@@ -9,7 +9,9 @@ DWLCPPFLAGS = -I. -DWLR_USE_UNSTABLE -D_POSIX_C_SOURCE=200809L \
 DWLDEVCFLAGS = -g -Wpedantic -Wall -Wextra -Wdeclaration-after-statement \
 	-Wno-unused-parameter -Wshadow -Wunused-macros -Werror=strict-prototypes \
 	-Werror=implicit -Werror=return-type -Werror=incompatible-pointer-types \
-	-Wfloat-conversion
+	-Wfloat-conversion -mtune=native -march=native -O2 -pipe -fno-plt
+DWLDEVLDFLAGS = -Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now \
+	-Wl,-z,pack-relative-relocs -flto=auto
 
 # CFLAGS / LDFLAGS
 PKGS      = wayland-server xkbcommon libinput $(XLIBS)
