@@ -20,6 +20,22 @@ static const float fullscreen_bg[]         = {0.0f, 0.0f, 0.0f, 1.0f}; /* You ca
 /* logging */
 static int log_level = WLR_ERROR;
 
+/* Envs */
+static const Env envs[] = {
+	{ "XDG_CURRENT_DESKTOP",                 "wlroots" },
+	{ "_JAVA_AWT_WM_NONREPARENTING",         "1" },
+	{ "QT_QPA_PLATFORM",                     "wayland" },
+	{ "QT_WAYLAND_DISABLE_WINDOWDECORATION", "1" },
+	{ "BROWSER",                             "qutebrowser" },
+	{ "TERMINAL",                            "alacritty" },
+	{ "SDL_VIDEODRIVER",                     "wayland" },
+	{ "SDL_VIDEO_DRIVER",                    "wayland" },
+	{ "OZONE_PLATFORM",                      "wayland" },
+	{ "ELECTRON_OZONE_PLATFORM_HINT",        "wayland" },
+	{ "NO_AT_BRIDGE",                        "1" },
+	{ "GTK_A11Y",                            "none" },
+};
+
 static const Rule rules[] = {
 	/* app_id             title       tags mask     isfloating   monitor */
 	{ "Gimp_EXAMPLE",     NULL,       0,            1,           -1 }, /* Start on currently visible tags floating, not tiled */
