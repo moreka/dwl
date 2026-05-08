@@ -67,19 +67,18 @@ static const MonitorRule monrules[] = {
 /* keyboard */
 static const struct xkb_rule_names xkb_rules = {
 	/* can specify fields: rules, model, layout, variant, options */
-	/* example:
-	.options = "ctrl:nocaps",
-	*/
-	.options = NULL,
+	.layout  = "us,ir",
+	.variant = ",pes_keypad",
+	.options = "grp:shifts_toggle",
 };
 
-static const int repeat_rate = 30;
-static const int repeat_delay = 500;
+static const int repeat_rate = 50;
+static const int repeat_delay = 300;
 
 /* Trackpad */
 static const int tap_to_click = 1;
 static const int tap_and_drag = 1;
-static const int drag_lock = 1;
+static const int drag_lock = 0;
 static const int natural_scrolling = 0;
 static const int disable_while_typing = 1;
 static const int left_handed = 0;
