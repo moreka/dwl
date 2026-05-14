@@ -134,6 +134,7 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 static const char *termcmd[] = { "alacritty", NULL };
 static const char *browsercmd[] = { "qutebrowser", NULL };
 static const char *menucmd[] = { "wmenu-run", "-c", "-i", "-l", "20", NULL };
+static const char *lockcmd[] = { "swaylock", NULL };
 
 static const Key keys[] = {
 	/* Note that Shift changes certain key codes: 2 -> at, etc. */
@@ -141,6 +142,7 @@ static const Key keys[] = {
 	{ MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
 	{ MODKEY,                    XKB_KEY_Return,      spawn,            {.v = termcmd} },
 	{ MODKEY,                    XKB_KEY_b,           spawn,            {.v = browsercmd} },
+	{ MODKEY,                    XKB_KEY_x,           spawn,            {.v = lockcmd} },
 	{ MODKEY,                    XKB_KEY_j,           focusstack,       {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,           focusstack,       {.i = -1} },
 	{ MODKEY,                    XKB_KEY_i,           incnmaster,       {.i = +1} },
