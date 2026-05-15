@@ -72,8 +72,8 @@ static const struct xkb_rule_names xkb_rules = {
 	.options = "grp:shifts_toggle",
 };
 
-static const int repeat_rate = 50;
-static const int repeat_delay = 300;
+static const int repeat_rate = 35;
+static const int repeat_delay = 200;
 
 /* Trackpad */
 static const int tap_to_click = 1;
@@ -178,6 +178,19 @@ static const Key keys[] = {
 	TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                      7),
 	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                     8),
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_e,           quit,             {0} },
+
+	{ 0, XKB_KEY_XF86AudioLowerVolume,   spawn, SHCMD("wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05- -l 1.0") },
+	{ 0, XKB_KEY_XF86AudioRaiseVolume, spawn, SHCMD("wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0") },
+	{ 0, XKB_KEY_XF86AudioMute,         spawn, SHCMD("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle && update-led-mute sink") },
+	{ 0, XKB_KEY_XF86AudioMicMute,      spawn, SHCMD("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle && update-led-mute source") },
+
+	{ 0, XKB_KEY_XF86MonBrightnessUp,  spawn, SHCMD("brightnessctl --class=backlight set 5%+") },
+	{ 0, XKB_KEY_XF86MonBrightnessDown,  spawn, SHCMD("brightnessctl --class=backlight set 5%-") },
+
+	// { 0,      XKB_KEY_Print, spawn, {.v = const char *[] {}} },
+	{ MODKEY, XKB_KEY_Print, spawn, {.v = (const char *[]){ "colorpick", NULL }} },
+
+
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, quit, {0} },
