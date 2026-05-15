@@ -1,6 +1,7 @@
 /*
  * See LICENSE file for copyright and license details.
  */
+#include <limits.h>
 #include <getopt.h>
 #include <libinput.h>
 #include <linux/input-event-codes.h>
@@ -314,6 +315,7 @@ static void dwl_ipc_output_set_layout(struct wl_client *client, struct wl_resour
 static void dwl_ipc_output_set_tags(struct wl_client *client, struct wl_resource *resource, uint32_t tagmask, uint32_t toggle_tagset);
 static void dwl_ipc_output_release(struct wl_client *client, struct wl_resource *resource);
 static void focusclient(Client *c, int lift);
+static void focusdir(const Arg *arg);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
 static Client *focustop(Monitor *m);
@@ -1747,6 +1749,48 @@ focusclient(Client *c, int lift)
 
 	/* Activate the new client */
 	client_activate_surface(client_surface(c), 1);
+}
+
+void focusdir(const Arg *arg)
+{
+	/* Focus the left, right, up, down client relative to the current focused client on selmon */
+	Client *c, *sel = focustop(selmon);
+	if (!sel || sel->isfullscreen)
+		return;
+
+	int dist = INT_MAX;
+	int newdist=INT_MAX;
+	Client *newsel = NULL;
+	wl_list_for_each(c, &clients, link) {
+		if (!VISIBLEON(c, selmon))
+			continue; /* skip non visible windows */
+
+		if (arg->ui == 0 && sel->geom.x <= c->geom.x) {
+			/* Client isn't on our left */
+			continue;
+		}
+		if (arg->ui == 1 && sel->geom.x >= c->geom.x) {
+			/* Client isn't on our right */
+			continue;
+		}
+		if (arg->ui == 2 && sel->geom.y <= c->geom.y) {
+			/* Client isn't above us */
+			continue;
+		}
+		if (arg->ui == 3 && sel->geom.y >= c->geom.y) {
+			/* Client isn't below us */
+			continue;
+		}
+
+		dist=abs(sel->geom.x-c->geom.x)+abs(sel->geom.y-c->geom.y);
+		if (dist < newdist){
+			newdist = dist;
+			newsel=c;
+		}
+	}
+	if (newsel != NULL){
+		focusclient(newsel, 1);
+	}
 }
 
 void
