@@ -6,7 +6,7 @@ include config.mk
 # flags for compiling
 DWLCPPFLAGS = -I. -DWLR_USE_UNSTABLE -D_POSIX_C_SOURCE=200809L \
 	-DVERSION=\"$(VERSION)\" $(XWAYLAND)
-DWLDEVCFLAGS = -g -Wpedantic -Wall -Wextra -Wdeclaration-after-statement \
+DWLDEVCFLAGS = -std=c11 -g -Wpedantic -Wall -Wextra \
 	-Wno-unused-parameter -Wshadow -Wunused-macros -Werror=strict-prototypes \
 	-Werror=implicit -Werror=return-type -Werror=incompatible-pointer-types \
 	-Wfloat-conversion -mtune=native -march=native -O3 -pipe -fno-plt
@@ -64,7 +64,7 @@ dwl-ipc-unstable-v2-protocol.c:
 config.h:
 	cp config.def.h $@
 clean:
-	rm -f dwl *.o *-protocol.h
+	rm -f dwl config.h *.o *-protocol.h dwl-ipc-unstable-v2-protocol.c
 
 dist: clean
 	mkdir -p dwl-$(VERSION)
