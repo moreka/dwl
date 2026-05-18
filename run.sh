@@ -8,7 +8,7 @@ turnstile-update-runit-env WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSI
 mako &
 waybar &
 wbg -s /home/moreka/.config/wallpaper &
-swayidle -w timeout 601 'wlr-dpms off' timeout 600 'swaylock -f' before-sleep 'swaylock -f' &
+swayidle -w timeout 600 'swaylock -f' timeout 601 'wlr-dpms off' resume 'wlr-dpms on' before-sleep 'swaylock -f' &
 wl-clip-persist --clipboard regular &
 
 wait
