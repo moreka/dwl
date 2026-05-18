@@ -187,8 +187,9 @@ static const Key keys[] = {
 	{ 0, XKB_KEY_XF86MonBrightnessUp,  spawn, SHCMD("brightnessctl --class=backlight set 5%+") },
 	{ 0, XKB_KEY_XF86MonBrightnessDown,  spawn, SHCMD("brightnessctl --class=backlight set 5%-") },
 
-	// { 0,      XKB_KEY_Print, spawn, {.v = const char *[] {}} },
-	{ MODKEY, XKB_KEY_Print, spawn, {.v = (const char *[]){ "colorpick", NULL }} },
+	{ 0,                 XKB_KEY_Print, spawn,   SHCMD("grim -g \"$(slurp)\"") },
+	{ WLR_MODIFIER_CTRL, XKB_KEY_Print, regions, SHCMD("grim -g \"$(slurp)\"") },
+	{ MODKEY,            XKB_KEY_Print, spawn,   {.v = (const char *[]){ "colorpick", NULL }} },
 
 
 
