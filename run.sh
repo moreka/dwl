@@ -10,5 +10,6 @@ waybar &
 wbg -s /home/moreka/.config/wallpaper &
 swayidle -w timeout 600 'swaylock -f' timeout 601 'wlr-dpms off' resume 'wlr-dpms on' before-sleep 'swaylock -f' &
 wl-clip-persist --clipboard regular &
+# foot --server &
 
 wait

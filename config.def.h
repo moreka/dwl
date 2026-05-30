@@ -37,10 +37,12 @@ static const Env envs[] = {
 };
 
 static const Rule rules[] = {
-	/* app_id             title       tags mask     isfloating   monitor */
-	{ "Gimp_EXAMPLE",     NULL,       0,            1,           -1 }, /* Start on currently visible tags floating, not tiled */
-	{ "firefox_EXAMPLE",  NULL,       1 << 8,       0,           -1 }, /* Start on ONLY tag "9" */
-    /* default/example rule: can be changed but cannot be eliminated; at least one rule must exist */
+	/* app_id                       title           tags mask     isfloating   monitor */
+	{ "com.gabm.satty",             NULL,           0,            1,           -1 },
+	{ "mpv",                        NULL,           0,            1,           -1 },
+	{ "gimp",                       "GIMP Startup", 0,            1,           -1 },
+	{ "org.telegram.desktop",       "Media viewer", 0,            1,           -1 },
+	{ "org.matplotlib.Matplotlib3", NULL,           0,            1,           -1 },
 };
 
 /* layout(s) */
@@ -143,6 +145,7 @@ static const Key keys[] = {
 	{ MODKEY,                    XKB_KEY_Return,      spawn,            {.v = termcmd} },
 	{ MODKEY,                    XKB_KEY_b,           spawn,            {.v = browsercmd} },
 	{ MODKEY,                    XKB_KEY_x,           spawn,            {.v = lockcmd} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_braceleft,   spawn,            {.v = (const char*[]){ "setmon", NULL }} },
 	{ MODKEY,                    XKB_KEY_j,           focusstack,       {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,           focusstack,       {.i = -1} },
 	{ MODKEY|WLR_MODIFIER_CTRL,  XKB_KEY_h,           focusdir,         {.ui = 0} },
@@ -187,9 +190,12 @@ static const Key keys[] = {
 	{ 0, XKB_KEY_XF86MonBrightnessUp,  spawn, SHCMD("brightnessctl --class=backlight set 5%+") },
 	{ 0, XKB_KEY_XF86MonBrightnessDown,  spawn, SHCMD("brightnessctl --class=backlight set 5%-") },
 
-	{ 0,                 XKB_KEY_Print, spawn,   SHCMD("grim -g \"$(slurp)\"") },
-	{ WLR_MODIFIER_CTRL, XKB_KEY_Print, regions, SHCMD("grim -g \"$(slurp)\"") },
-	{ MODKEY,            XKB_KEY_Print, spawn,   {.v = (const char *[]){ "colorpick", NULL }} },
+	{ 0,                 XKB_KEY_Print, spawn,   SHCMD("scrot-dwl region") },
+	{ WLR_MODIFIER_CTRL, XKB_KEY_Print, regions, SHCMD("scrot-dwl windows") },
+
+	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Print, spawn, SHCMD("scrot-dwl fullscreen") },
+
+	{ MODKEY,            XKB_KEY_Print, spawn,   {.v = (const char*[]){ "colorpick", NULL }} },
 
 
 
