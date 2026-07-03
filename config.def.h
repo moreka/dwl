@@ -8,7 +8,7 @@ static const int sloppyfocus               = 1;  /* focus follows mouse */
 static const int bypass_surface_visibility = 0;  /* 1 means idle inhibitors will disable idle tracking even if it's surface isn't visible  */
 static const unsigned int borderpx         = 2;  /* border pixel of windows */
 static const int showbar                   = 1;
-static const int topbar                    = 1;
+static const int topbar                    = 0;
 static const char* fonts[]                 = {"monospace:size=10"};
 static const float rootcolor[]             = COLOR(0x000000ff);
 
@@ -53,10 +53,10 @@ static const Rule rules[] = {
 
 /* layout(s) */
 static const Layout layouts[] = {
-	/* symbol     arrange function */
-	{ "[]=",      tile },
-	{ "><>",      NULL },    /* no layout function means floating behavior */
-	{ "[M]",      monocle },
+	/* symbol     arrange function  show titles*/
+	{ "[]=",      tile,             0 },
+	{ "><>",      NULL,             0 },    /* no layout function means floating behavior */
+	{ "[M]",      monocle,          1 },
 };
 
 /* monitors */

@@ -93,6 +93,7 @@
 #define LISTEN(E, L, H)         wl_signal_add((E), ((L)->notify = (H), (L)))
 #define LISTEN_STATIC(E, H)     do { struct wl_listener *_l = ecalloc(1, sizeof(*_l)); _l->notify = (H); wl_signal_add((E), _l); } while (0)
 #define TEXTW(mon, text)        (drwl_font_getwidth(mon->drw, text) + mon->lrpad)
+// #define TTEXTW(mon, text)        (drwl_font_getwidth(mon->t_drw, text) + mon->lrpad)
 
 /* enums */
 enum { SchemeNorm, SchemeSel, SchemeUrg }; /* colorschemes */
@@ -205,6 +206,7 @@ typedef struct {
 typedef struct {
 	const char *symbol;
 	void (*arrange)(Monitor *);
+	int showtitle;
 } Layout;
 
 typedef struct {
@@ -220,6 +222,7 @@ struct Monitor {
 	struct wlr_output *wlr_output;
 	struct wlr_scene_output *scene_output;
 	struct wlr_scene_buffer *scene_buffer; /* bar buffer */
+	struct wlr_scene_buffer *title_buffer; /* title buffer */
 	struct wlr_scene_rect *fullscreen_bg; /* See createmon() for info */
 	struct wl_list dwl_ipc_outputs;
 	struct wl_listener frame;
@@ -233,6 +236,11 @@ struct Monitor {
 		int real_width, real_height; /* non-scaled */
 		float scale;
 	} b; /* bar area */
+	struct {
+		int width, height;
+		int real_width, real_height; /* non-scaled */
+		float scale;
+	} tt; /* title area */
 	struct wlr_box w; /* window area, layout-relative */
 	struct wl_list layers[4]; /* LayerSurface.link */
 	const Layout *lt[2];
@@ -247,6 +255,8 @@ struct Monitor {
 	int asleep;
 	Drwl *drw;
 	Buffer *pool[2];
+	Drwl *t_drw;
+	Buffer *t_pool[2];
 	int lrpad;
 };
 
@@ -489,6 +499,7 @@ static Monitor *selmon;
 
 static char stext[256];
 static struct wl_event_source *status_event_source;
+static int statusfd;
 
 static const struct wlr_buffer_impl buffer_impl = {
 	.destroy = bufdestroy,
@@ -688,7 +699,10 @@ arrangelayers(Monitor *m)
 	if (m->scene_buffer->node.enabled) {
 		usable_area.height -= m->b.real_height;
 		usable_area.y += topbar ? m->b.real_height : 0;
-		// NOTE: this might be the place to change!
+	}
+	if (m->title_buffer->node.enabled) {
+		usable_area.height -= m->tt.real_height;
+		usable_area.y += m->tt.real_height;  // TODO: (m->sellt == 2) ? m->tt.real_height : 0;
 	}
 
 	/* Arrange exclusive surfaces from top->bottom */
@@ -767,6 +781,36 @@ bufdatabegin(struct wlr_buffer *wlr_buffer, uint32_t flags,
 void
 bufdataend(struct wlr_buffer *wlr_buffer)
 {
+}
+
+Buffer *
+tbufmon(Monitor *m)
+{
+	size_t i;
+	Buffer *buf = NULL;
+
+	for (i = 0; i < LENGTH(m->t_pool); i++) {
+		if (m->t_pool[i]) {
+			if (m->t_pool[i]->busy)
+				continue;
+			buf = m->t_pool[i];
+			break;
+		}
+
+		buf = ecalloc(1, sizeof(Buffer) + (m->tt.width * 4 * m->tt.height));
+		buf->image = drwl_image_create(NULL, m->tt.width, m->tt.height, buf->data);
+		wlr_buffer_init(&buf->base, &buffer_impl, m->tt.width, m->tt.height);
+		m->t_pool[i] = buf;
+		break;
+	}
+	if (!buf)
+		return NULL;
+
+	buf->busy = true;
+	LISTEN(&buf->base.events.release, &buf->release, bufrelease);
+	wlr_buffer_lock(&buf->base);
+	drwl_setimage(m->t_drw, buf->image);
+	return buf;
 }
 
 Buffer *
@@ -1033,6 +1077,8 @@ cleanupmon(struct wl_listener *listener, void *data)
 	}
 	drwl_setimage(m->drw, NULL);
 	drwl_destroy(m->drw);
+	drwl_setimage(m->t_drw, NULL);
+	drwl_destroy(m->t_drw);
 
 	wl_list_remove(&m->destroy.link);
 	wl_list_remove(&m->frame.link);
@@ -1048,6 +1094,7 @@ cleanupmon(struct wl_listener *listener, void *data)
 	closemon(m);
 	wlr_scene_node_destroy(&m->fullscreen_bg->node);
 	wlr_scene_node_destroy(&m->scene_buffer->node);
+	wlr_scene_node_destroy(&m->title_buffer->node);
 	free(m);
 }
 
@@ -1394,8 +1441,13 @@ createmon(struct wl_listener *listener, void *data)
 	if (!(m->drw = drwl_create()))
 		die("failed to create drwl context");
 
+	if (!(m->t_drw = drwl_create()))
+		die("failed to create drwl context for title");
+
 	m->scene_buffer = wlr_scene_buffer_create(layers[LyrBottom], NULL);
 	m->scene_buffer->point_accepts_input = baracceptsinput;
+	m->title_buffer = wlr_scene_buffer_create(layers[LyrBottom], NULL);
+	m->title_buffer->point_accepts_input = baracceptsinput;
 	updatebar(m);
 
 	wl_list_insert(&mons, &m->link);
@@ -1788,12 +1840,65 @@ drawbar(Monitor *m)
 }
 
 void
+drawtitlebar(Monitor *m)
+{
+	Buffer *buf;
+
+	if (!m->title_buffer->node.enabled)
+		return;
+	if (!(buf = tbufmon(m)))
+		return;
+
+
+	Client *c;
+	Client *focused = focustop(m);
+	int numclients = 0;
+	wl_list_for_each(c, &clients, link) {
+		if (c->mon != m)
+			continue;
+		if (!(c->tags & m->tagset[m->seltags]))
+			continue;
+		numclients++;
+	}
+
+	drwl_setscheme(m->t_drw, colors[SchemeNorm]);
+	drwl_rect(m->t_drw, 0, 0, m->tt.width, m->tt.height, 1, 1);
+
+	if (numclients > 0) {
+		int x = 0;
+		int titlebar_width = m->tt.width / numclients;
+
+		wl_list_for_each(c, &clients, link) {
+			if (c->mon != m)
+				continue;
+			if (!(c->tags & m->tagset[m->seltags]))
+				continue;
+			if (c == focused) {
+				drwl_setscheme(m->t_drw, colors[SchemeSel]);
+			}
+			else {
+				drwl_setscheme(m->t_drw, colors[SchemeNorm]);
+			}
+			drwl_rect(m->t_drw, x, 0, titlebar_width, m->tt.height, 1, 0);
+			drwl_text(m->t_drw, x, 0, titlebar_width, m->tt.height, m->lrpad / 2, client_get_title(c), 0);
+			x += titlebar_width;
+		}
+	}
+	wlr_scene_buffer_set_dest_size(m->title_buffer, m->tt.real_width, m->tt.real_height);
+	wlr_scene_node_set_position(&m->title_buffer->node, m->m.x, m->m.y + (topbar ? m->b.real_height : 0));
+	wlr_scene_buffer_set_buffer(m->title_buffer, &buf->base);
+	wlr_buffer_unlock(&buf->base);
+}
+
+void
 drawbars(void)
 {
 	Monitor *m = NULL;
 
-	wl_list_for_each(m, &mons, link)
+	wl_list_for_each(m, &mons, link) {
 		drawbar(m);
+		drawtitlebar(m);
+	}
 }
 
 void
@@ -3049,10 +3154,19 @@ setlayout(const Arg *arg)
 		selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag] ^= 1;
 	if (arg && arg->v)
 		selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt] = (Layout *)arg->v;
+
+	if (arg && arg->v && ((Layout *)arg->v)->showtitle == 1) {
+		wlr_scene_node_set_enabled(&selmon->title_buffer->node, 1);
+	} else {
+		wlr_scene_node_set_enabled(&selmon->title_buffer->node, 0);
+	}
+
+	arrangelayers(selmon);
 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof(selmon->ltsymbol));
 	arrange(selmon);
 	printstatus();
 	drawbar(selmon);
+	drawtitlebar(selmon);
 }
 
 /* arg > 1.0 will set mfact absolutely */
@@ -3346,16 +3460,17 @@ setup(void)
 	int flags = fcntl(pipefd[1], F_GETFD);
 	fcntl(pipefd[1], F_SETFD, flags & ~FD_CLOEXEC);
 
-	status_event_source = wl_event_loop_add_fd(wl_display_get_event_loop(dpy), pipefd[0], WL_EVENT_READABLE, statusin, NULL);
+	statusfd = pipefd[0];
 
-	pid_t _pid = fork();
-	if (_pid == 0) {
+	status_event_source = wl_event_loop_add_fd(wl_display_get_event_loop(dpy), statusfd, WL_EVENT_READABLE, statusin, NULL);
+
+	if (fork() == 0) {
 		char fdstr[16];
 		snprintf(fdstr, sizeof(fdstr), "%d", pipefd[1]);
 		setenv("STATUS_FD", fdstr, 1);
 		close(pipefd[0]);
-		execl("./dwl-status-writer", "./dwl-status-writer", NULL);
-		die("execl");
+		execlp("dwl-status-writer", "dwl-status-writer", NULL);
+		die("execlp");
 	}
 
 	close(pipefd[1]);
@@ -3386,8 +3501,6 @@ void
 spawn(const Arg *arg)
 {
 	if (fork() == 0) {
-		close(STDIN_FILENO);
-		open("/dev/null", O_RDWR);
 		dup2(STDERR_FILENO, STDOUT_FILENO);
 		setsid();
 		execvp(((char **)arg->v)[0], (char **)arg->v);
@@ -3414,8 +3527,8 @@ statusin(int fd, unsigned int mask, void *data)
 	if (mask & WL_EVENT_ERROR)
 		die("status in event error");
 	if (mask & WL_EVENT_HANGUP) {
+		close(statusfd);
 		wl_event_source_remove(status_event_source);
-		fprintf(stderr, "hung up\n");
 	}
 
 	n = read(fd, status, sizeof(status) - 1);
@@ -3712,6 +3825,7 @@ updatemons(struct wl_listener *listener, void *data)
 	wl_list_for_each(m, &mons, link) {
 		updatebar(m);
 		drawbar(m);
+		drawtitlebar(m);
 	}
 
 	/* FIXME: figure out why the cursor image is at 0,0 after turning all
@@ -3735,7 +3849,11 @@ updatebar(Monitor *m)
 	m->b.width = rw;
 	m->b.real_width = (int)((float)m->b.width / m->wlr_output->scale);
 
+	m->tt.width = rw;
+	m->tt.real_width = (int)((float)m->tt.width / m->wlr_output->scale);
+
 	wlr_scene_node_set_enabled(&m->scene_buffer->node, m->wlr_output->enabled ? showbar : 0);
+	wlr_scene_node_set_enabled(&m->title_buffer->node, m->wlr_output->enabled ? m->lt[m->sellt]->showtitle : 0);  // TODO: only show in monocle
 
 	for (i = 0; i < LENGTH(m->pool); i++)
 		if (m->pool[i]) {
@@ -3743,18 +3861,33 @@ updatebar(Monitor *m)
 			m->pool[i] = NULL;
 		}
 
+	for (i = 0; i < LENGTH(m->t_pool); i++)
+		if (m->t_pool[i]) {
+			wlr_buffer_drop(&m->t_pool[i]->base);
+			m->t_pool[i] = NULL;
+		}
+
 	if (m->b.scale == m->wlr_output->scale && m->drw)
 		return;
 
 	drwl_font_destroy(m->drw->font);
+	drwl_font_destroy(m->t_drw->font);
+
 	snprintf(fontattrs, sizeof(fontattrs), "dpi=%.2f", 96. * m->wlr_output->scale);
 	if (!(drwl_font_create(m->drw, LENGTH(fonts), fonts, fontattrs)))
+		die("Could not load font");
+
+	if (!(drwl_font_create(m->t_drw, LENGTH(fonts), fonts, fontattrs)))
 		die("Could not load font");
 
 	m->b.scale = m->wlr_output->scale;
 	m->lrpad = m->drw->font->height;
 	m->b.height = m->drw->font->height + 2;
 	m->b.real_height = (int)((float)m->b.height / m->wlr_output->scale);
+
+	m->tt.scale = m->wlr_output->scale;
+	m->tt.height = m->t_drw->font->height + 2;
+	m->tt.real_height = (int)((float)m->tt.height / m->wlr_output->scale);
 }
 
 void
