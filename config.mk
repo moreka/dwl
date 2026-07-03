@@ -4,12 +4,14 @@ VERSION  = `git describe --tags --dirty 2>/dev/null || echo $(_VERSION)`
 PKG_CONFIG = pkg-config
 
 # paths
+export PKG_CONFIG_PATH := /usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
+
 PREFIX = /usr/local
 MANDIR = $(PREFIX)/share/man
 DATADIR = $(PREFIX)/share
 
-WLR_INCS = `$(PKG_CONFIG) --cflags wlroots-0.20`
-WLR_LIBS = `$(PKG_CONFIG) --libs wlroots-0.20`
+WLR_INCS = `$(PKG_CONFIG) --cflags wlroots-0.21`
+WLR_LIBS = `$(PKG_CONFIG) --libs wlroots-0.21`
 
 # Allow using an alternative wlroots installation
 # This has to have all the includes required by wlroots, e.g:

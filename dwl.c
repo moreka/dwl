@@ -823,6 +823,13 @@ cleanup(void)
 	wlr_xwayland_destroy(xwayland);
 	xwayland = NULL;
 #endif
+    if (fork() == 0) {
+        setsid();
+        execvp("systemctl", (char *const[]) {
+            "systemctl", "--user", "stop", "dwl-session.target", NULL
+        });
+        exit(1);
+    }
 	wl_display_destroy_clients(dpy);
 	if (child_pid > 0) {
 		kill(-child_pid, SIGTERM);
@@ -2990,7 +2997,7 @@ setup(void)
 	wlr_server_decoration_manager_set_default_mode(
 			wlr_server_decoration_manager_create(dpy),
 			WLR_SERVER_DECORATION_MANAGER_MODE_SERVER);
-	xdg_decoration_mgr = wlr_xdg_decoration_manager_v1_create(dpy);
+	xdg_decoration_mgr = wlr_xdg_decoration_manager_v1_create(dpy, 2);
 	wl_signal_add(&xdg_decoration_mgr->events.new_toplevel_decoration, &new_xdg_decoration);
 
 	pointer_constraints = wlr_pointer_constraints_v1_create(dpy);

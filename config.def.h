@@ -25,7 +25,7 @@ static const Env envs[] = {
 	{ "XDG_CURRENT_DESKTOP",                 "wlroots" },
 	{ "_JAVA_AWT_WM_NONREPARENTING",         "1" },
 	{ "QT_QPA_PLATFORM",                     "wayland" },
-	{ "QT_WAYLAND_DISABLE_WINDOWDECORATION", "1" },
+	{ "QT_QPA_PLATFORMTHEME",                "qt6ct" },
 	{ "BROWSER",                             "qutebrowser" },
 	{ "TERMINAL",                            "alacritty" },
 	{ "SDL_VIDEODRIVER",                     "wayland" },
@@ -133,9 +133,10 @@ static const enum libinput_config_tap_button_map button_map = LIBINPUT_CONFIG_TA
 #define SHCMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
 
 /* commands */
-static const char *termcmd[] = { "alacritty", NULL };
-static const char *browsercmd[] = { "qutebrowser", NULL };
-static const char *menucmd[] = { "wmenu-run", "-c", "-i", "-l", "20", NULL };
+static const char *termcmd[] = { "runapp", "alacritty", NULL };
+static const char *browsercmd[] = { "runapp", "qutebrowser", NULL };
+// static const char *menucmd[] = { "wmenu-run", "-c", "-i", "-l", "20", NULL };
+static const char *menucmd[] = { "fuzzel", "--launch-prefix=runapp", NULL };
 static const char *lockcmd[] = { "swaylock", NULL };
 
 static const Key keys[] = {
